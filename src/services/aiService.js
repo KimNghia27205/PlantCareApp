@@ -1,15 +1,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Thay thế bằng API Key của bạn lấy từ Google AI Studio
-const GEMINI_API_KEY = 'AIzaSyAf37ovkOiYAUXcJX5F6BXWhjJj2DSwIPU';
+// Lấy API Key từ biến môi trường của Expo
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 // Lazy initialization: chỉ khởi tạo khi thực sự gọi API, kèm validation key
 let _genAI = null;
 const getGenAI = () => {
   if (!_genAI) {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+    if (!GEMINI_API_KEY) {
       throw new Error(
-        '[PlantCareApp] Vui lòng thay thế GEMINI_API_KEY trong src/services/aiService.js bằng API Key thật từ Google AI Studio.'
+        '[PlantCareApp] Thiếu EXPO_PUBLIC_GEMINI_API_KEY trong file .env'
       );
     }
     _genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -35,7 +35,8 @@ export const analyzePlantImage = async (base64Image) => {
         "plantName": "Tên loại cây",
         "healthStatus": "Trạng thái sức khỏe (Khỏe mạnh / Cần chăm sóc / Đang bệnh)",
         "diseaseName": "Tên bệnh (nếu có, nếu không để null)",
-        "solution": "Giải pháp hoặc cách chăm sóc cụ thể (tối đa 2-3 câu)"
+        "solution": "Giải pháp hoặc cách chăm sóc cụ thể (tối đa 2-3 câu)",
+        "waterIntervalDays": "Số ngày lý tưởng giữa các lần tưới nước (chỉ trả về số nguyên, ví dụ: 2, 3, 7, 15...)"
       }
     `;
 

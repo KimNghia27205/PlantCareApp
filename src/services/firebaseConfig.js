@@ -5,16 +5,15 @@ import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Thông tin cấu hình Firebase
-// LƯU Ý: Vui lòng thay thế các giá trị bên dưới bằng thông tin từ Firebase Console của bạn
+// Lấy cấu hình Firebase từ biến môi trường của Expo
 const firebaseConfig = {
-  apiKey: "AIzaSyCkrmyB-ma8l5JPMN3N5FNtdTGGAxXGKhU",
-  authDomain: "plantcareapp-5533e.firebaseapp.com",
-  projectId: "plantcareapp-5533e",
-  storageBucket: "plantcareapp-5533e.firebasestorage.app",
-  messagingSenderId: "700039085798",
-  appId: "1:700039085798:web:6b7206e15b6d40f2038527",
-  measurementId: "G-1NR00J49YY"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Kiểm tra xem developer đã thay thế config placeholder chưa

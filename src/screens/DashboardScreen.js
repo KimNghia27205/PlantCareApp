@@ -184,6 +184,7 @@ const DashboardScreen = () => {
       healthStatus: analysisResult.healthStatus,
       diseaseName: analysisResult.diseaseName || null,
       solution: analysisResult.solution || null,
+      waterIntervalDays: parseInt(analysisResult.waterIntervalDays) || 2,
       imageUrl: uploadRes.url,
       storagePath: uploadRes.storagePath, // FIX: lưu path thật để xóa ảnh sau này
       location: 'Chưa phân loại',

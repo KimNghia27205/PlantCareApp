@@ -65,7 +65,9 @@ const ScanScreen = ({ navigation }) => {
         healthStatus: result.healthStatus,
         diseaseName: result.diseaseName || null,
         solution: result.solution || null,
+        waterIntervalDays: parseInt(result.waterIntervalDays) || 2,
         imageUrl: uploadRes.url,
+        storagePath: uploadRes.storagePath,
         location: 'Chưa phân loại',
         createdAt: new Date().toISOString(),
       };

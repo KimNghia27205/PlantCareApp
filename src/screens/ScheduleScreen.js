@@ -1,74 +1,119 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
 const ScheduleScreen = () => {
   const { user } = useContext(AuthContext);
-  const [schedules, setSchedules] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Dữ liệu giả lập nếu Firebase trống
-  const dummySchedules = [
-    { id: 'dummy1', plantName: 'Cây Bàng Singapore', action: 'Tưới nước', time: 'Hôm nay, 08:00 AM', status: 'pending' },
-    { id: 'dummy2', plantName: 'Hoa Hồng', action: 'Bón phân', time: 'Ngày mai, 07:00 AM', status: 'pending' },
-  ];
 
   useEffect(() => {
     fetchSchedules();
-  }, [user]);
+  }, [user?.uid]);
 
   const fetchSchedules = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const q = query(collection(db, 'schedules'), where('userId', '==', user.uid));
+      // 1. Lấy toàn bộ cây trong vườn của người dùng
+      const q = query(collection(db, 'plants'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
-      const scheduleList = [];
-      querySnapshot.forEach((doc) => {
-        scheduleList.push({ id: doc.id, ...doc.data() });
+      
+      const now = new Date();
+      let taskList = [];
+
+      querySnapshot.forEach((document) => {
+        const plant = { id: document.id, ...document.data() };
+        
+        // Giả lập logic: Mặc định mỗi cây cần tưới 2 ngày 1 lần.
+        // Thực tế có thể lưu waterInterval (số ngày) vào database khi tạo cây.
+        const waterIntervalDays = plant.waterInterval || 2; 
+        
+        let lastWatered = plant.lastWatered ? new Date(plant.lastWatered) : new Date(0);
+        let nextWatering = new Date(lastWatered);
+        nextWatering.setDate(nextWatering.getDate() + waterIntervalDays);
+
+        // Tính khoảng thời gian chênh lệch
+        const diffTime = nextWatering - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        let status = 'pending';
+        let timeLabel = '';
+
+        if (diffDays < 0) {
+          status = 'overdue';
+          timeLabel = `Quá hạn ${Math.abs(diffDays)} ngày`;
+        } else if (diffDays === 0) {
+          status = 'today';
+          timeLabel = 'Hôm nay';
+        } else {
+          status = 'upcoming';
+          timeLabel = `Còn ${diffDays} ngày nữa`;
+        }
+
+        taskList.push({
+          id: plant.id, // dùng luôn id của cây
+          plantName: plant.name || plant.plantName,
+          imageUrl: plant.imageUrl,
+          location: plant.location || 'Chưa phân loại',
+          action: 'Tưới nước',
+          timeLabel: timeLabel,
+          status: status,
+          nextWatering: nextWatering
+        });
       });
       
-      // Nếu không có dữ liệu thực tế, dùng dữ liệu giả lập để demo
-      setSchedules(scheduleList.length > 0 ? scheduleList : dummySchedules);
+      // Sắp xếp: Quá hạn lên đầu, sau đó đến hôm nay, sau đó là tương lai
+      taskList.sort((a, b) => a.nextWatering - b.nextWatering);
+      
+      setTasks(taskList);
     } catch (error) {
       console.error("Lỗi tải lịch:", error);
-      setSchedules(dummySchedules);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkAsDone = async (id) => {
-    // Nếu là dữ liệu dummy, chỉ cập nhật state
-    if (id.startsWith('dummy')) {
-      setSchedules(schedules.filter(s => s.id !== id));
-      Alert.alert('Thành công', 'Đã đánh dấu hoàn thành nhiệm vụ!');
-      return;
-    }
-
-    // Nếu là dữ liệu thực tế trên Firebase
+  const handleMarkAsDone = async (id, actionName) => {
     try {
-      await updateDoc(doc(db, 'schedules', id), { status: 'completed' });
-      setSchedules(schedules.filter(s => s.id !== id));
-      Alert.alert('Thành công', 'Đã đánh dấu hoàn thành nhiệm vụ!');
+      // Cập nhật lastWatered thành thời điểm hiện tại
+      await updateDoc(doc(db, 'plants', id), { 
+        lastWatered: new Date().toISOString() 
+      });
+      
+      Alert.alert('Hoàn thành', `Đã ghi nhận ${actionName.toLowerCase()} thành công!`);
+      // Tải lại danh sách để tự động tính toán lại ngày giờ
+      fetchSchedules();
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể cập nhật trạng thái.');
     }
   };
 
-  const renderSchedule = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardInfo}>
-        <Text style={styles.actionName}>{item.action} - {item.plantName}</Text>
-        <Text style={styles.time}>⏰ {item.time}</Text>
+  const renderSchedule = ({ item }) => {
+    let statusColor = '#4CAF50'; // upcoming
+    if (item.status === 'overdue') statusColor = '#F44336';
+    if (item.status === 'today') statusColor = '#FF9800';
+
+    return (
+      <View style={styles.card}>
+        <Image source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1416879598555-46700c0a9693?q=80&w=200&auto=format&fit=crop' }} style={styles.plantImage} />
+        
+        <View style={styles.cardInfo}>
+          <Text style={styles.actionName}>{item.action}</Text>
+          <Text style={styles.plantName}>{item.plantName}</Text>
+          <View style={[styles.timeBadge, { backgroundColor: statusColor }]}>
+             <Text style={styles.timeBadgeText}>{item.timeLabel}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.doneButton} onPress={() => handleMarkAsDone(item.id, item.action)}>
+          <Text style={styles.doneButtonText}>Xong</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.doneButton} onPress={() => handleMarkAsDone(item.id)}>
-        <Text style={styles.doneButtonText}>Đã xong</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -76,15 +121,17 @@ const ScheduleScreen = () => {
       
       {loading ? (
         <ActivityIndicator size="large" color="#FF9800" style={{ marginTop: 50 }} />
-      ) : schedules.length === 0 ? (
+      ) : tasks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Hôm nay bạn không có lịch chăm cây nào!</Text>
+          <Text style={styles.emptyText}>Tuyệt vời!</Text>
+          <Text style={styles.emptySub}>Khu vườn của bạn chưa có lịch chăm sóc nào, hoặc bạn chưa thêm cây.</Text>
         </View>
       ) : (
         <FlatList
-          data={schedules}
+          data={tasks}
           keyExtractor={item => item.id}
           renderItem={renderSchedule}
+          contentContainerStyle={{ paddingBottom: 80 }}
         />
       )}
     </View>
@@ -95,13 +142,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fdf8e4' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#E65100', marginTop: 30, marginBottom: 20 },
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 3, alignItems: 'center' },
+  plantImage: { width: 60, height: 60, borderRadius: 10, marginRight: 15 },
   cardInfo: { flex: 1 },
-  actionName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  time: { color: '#666', marginTop: 8, fontSize: 14 },
-  doneButton: { backgroundColor: '#4CAF50', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
+  actionName: { fontSize: 16, fontWeight: 'bold', color: '#E65100' },
+  plantName: { fontSize: 14, color: '#333', marginTop: 2, marginBottom: 5 },
+  timeBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  timeBadgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  doneButton: { backgroundColor: '#4CAF50', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 8, marginLeft: 10 },
   doneButtonText: { color: '#fff', fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 16, color: '#666', fontWeight: 'bold' }
+  emptyText: { fontSize: 20, color: '#666', fontWeight: 'bold' },
+  emptySub: { fontSize: 14, color: '#999', marginTop: 10, textAlign: 'center', paddingHorizontal: 20 }
 });
 
 export default ScheduleScreen;
