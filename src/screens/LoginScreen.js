@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform, ScrollView 
 } from 'react-native';
-import { loginUser, registerUser } from '../services/authService';
+import { loginUser, registerUser, loginWithGoogle } from '../services/authService';
 
 const LoginScreen = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -61,6 +61,19 @@ const LoginScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const result = await loginWithGoogle();
+    if (!result.success) {
+      if (Platform.OS === 'web') {
+        window.alert('Lỗi đăng nhập Google: ' + result.error);
+      } else {
+        Alert.alert('Lỗi đăng nhập Google', result.error);
+      }
+    }
+    setLoading(false);
   };
 
   return (
@@ -136,14 +149,8 @@ const LoginScreen = () => {
         <View style={styles.socialContainer}>
           <Text style={styles.socialText}>Hoặc đăng nhập bằng</Text>
           <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#DB4437'}]} onPress={() => Alert.alert('Đang phát triển', 'Google Login đang được tích hợp.')}>
+            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#DB4437'}]} onPress={handleGoogleLogin} disabled={loading}>
               <Text style={styles.socialButtonText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#4267B2'}]} onPress={() => Alert.alert('Đang phát triển', 'Facebook Login đang được tích hợp.')}>
-              <Text style={styles.socialButtonText}>Facebook</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#000000'}]} onPress={() => Alert.alert('Đang phát triển', 'Apple Login đang được tích hợp.')}>
-              <Text style={styles.socialButtonText}>Apple</Text>
             </TouchableOpacity>
           </View>
         </View>

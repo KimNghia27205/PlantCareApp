@@ -2,8 +2,11 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
-  updateProfile 
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
 
@@ -57,6 +60,48 @@ export const logoutUser = async () => {
     await signOut(auth);
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Cấu hình Client ID lấy từ Firebase Console (Cần thay thế bằng ID thật)
+GoogleSignin.configure({
+  webClientId: 'YOUR_WEB_CLIENT_ID_TU_FIREBASE.apps.googleusercontent.com',
+});
+
+/**
+ * Đăng nhập bằng Google
+ */
+export const loginWithGoogle = async () => {
+  try {
+    // Kích hoạt Play Services
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    
+    // Mở popup chọn tài khoản Google
+    const userInfo = await GoogleSignin.signIn();
+    
+    // Lấy ID Token
+    const { idToken } = await GoogleSignin.getTokens();
+
+    // Tạo Credential cho Firebase
+    const googleCredential = GoogleAuthProvider.credential(idToken);
+
+    // Đăng nhập Firebase
+    const userCredential = await signInWithCredential(auth, googleCredential);
+    const user = userCredential.user;
+
+    // Đảm bảo user có bản ghi trong Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      lastLogin: new Date().toISOString()
+    }, { merge: true }); // dùng merge để không ghi đè dữ liệu cũ (ví dụ: điểm số)
+
+    return { success: true, user };
+  } catch (error) {
+    console.error("Google Sign-in Error:", error);
     return { success: false, error: error.message };
   }
 };
