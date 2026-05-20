@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
+import { deletePlant } from '../services/plantService'; // FIX: dùng service để xóa cả ảnh lẫn doc
 import { AuthContext } from '../context/AuthContext';
 
 const MyGardenScreen = ({ navigation }) => {
@@ -11,7 +12,7 @@ const MyGardenScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchPlants();
-  }, [user]);
+  }, [user?.uid]); // FIX: dùng user?.uid thay vì toàn bộ user object
 
   const fetchPlants = async () => {
     if (!user) return;
@@ -34,14 +35,17 @@ const MyGardenScreen = ({ navigation }) => {
   const handleDelete = (id) => {
     Alert.alert('Xác nhận', 'Bạn có chắc muốn xóa cây này?', [
       { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try {
-          await deleteDoc(doc(db, 'plants', id));
-          setPlants(plants.filter(p => p.id !== id));
-        } catch (error) {
-          Alert.alert('Lỗi', 'Không thể xóa cây.');
+      {
+        text: 'Xóa', style: 'destructive', onPress: async () => {
+          // FIX: dùng deletePlant từ service để xóa cả ảnh trên Storage
+          const result = await deletePlant(id);
+          if (result.success) {
+            setPlants(prev => prev.filter(p => p.id !== id));
+          } else {
+            Alert.alert('Lỗi', result.error || 'Không thể xóa cây.');
+          }
         }
-      }}
+      }
     ]);
   };
 
@@ -49,9 +53,11 @@ const MyGardenScreen = ({ navigation }) => {
     <View style={styles.card}>
       <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/100' }} style={styles.plantImage} />
       <View style={styles.cardContent}>
-        <Text style={styles.plantName}>{item.name}</Text>
-        <Text style={styles.plantLocation}>📍 Vị trí: {item.location}</Text>
-        <Text style={styles.plantStatus}>💧 Tình trạng: Tốt</Text>
+        <Text style={styles.plantName}>{item.name || item.plantName}</Text>
+        <Text style={styles.plantLocation}>📍 Vị trí: {item.location || 'Chưa phân loại'}</Text>
+        <Text style={styles.plantStatus}>
+          {item.healthStatus?.includes('Khỏe') ? '💚' : '⚠️'} {item.healthStatus || 'Tốt'}
+        </Text>
       </View>
       <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
         <Text style={styles.deleteText}>Xóa</Text>

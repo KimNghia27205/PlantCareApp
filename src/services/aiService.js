@@ -26,8 +26,6 @@ export const analyzePlantImage = async (base64Image) => {
     const genAI = getGenAI();
 
     // Prompt yêu cầu AI trả về định dạng JSON nghiêm ngặt
-
-    // Prompt yêu cầu AI trả về định dạng JSON nghiêm ngặt
     const prompt = `
       Bạn là một chuyên gia thực vật học và nông nghiệp.
       Hãy phân tích hình ảnh cây trồng này và trả về kết quả định dạng JSON chính xác.

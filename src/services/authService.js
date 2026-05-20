@@ -64,22 +64,25 @@ export const logoutUser = async () => {
   }
 };
 
-// Cấu hình Client ID lấy từ Firebase Console (Cần thay thế bằng ID thật)
-GoogleSignin.configure({
-  webClientId: 'YOUR_WEB_CLIENT_ID_TU_FIREBASE.apps.googleusercontent.com',
-});
+// FIX #11: Không gọi GoogleSignin.configure() ở module-level
+// vì sẽ crash trên Web (browser không có native module)
 
 /**
  * Đăng nhập bằng Google
  */
 export const loginWithGoogle = async () => {
   try {
+    // FIX #11: Gọi configure() bên trong hàm, chỉ chạy khi user thực sự nhấn nút
+    GoogleSignin.configure({
+      webClientId: 'YOUR_WEB_CLIENT_ID_TU_FIREBASE.apps.googleusercontent.com',
+    });
+
     // Kích hoạt Play Services
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    
+
     // Mở popup chọn tài khoản Google
     const userInfo = await GoogleSignin.signIn();
-    
+
     // Lấy ID Token
     const { idToken } = await GoogleSignin.getTokens();
 
@@ -96,8 +99,9 @@ export const loginWithGoogle = async () => {
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
+      points: 0,
       lastLogin: new Date().toISOString()
-    }, { merge: true }); // dùng merge để không ghi đè dữ liệu cũ (ví dụ: điểm số)
+    }, { merge: true });
 
     return { success: true, user };
   } catch (error) {

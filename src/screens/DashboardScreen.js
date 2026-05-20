@@ -179,12 +179,14 @@ const DashboardScreen = () => {
     // 2. Lưu thông tin vào Firestore
     const plantData = {
       userId: user.uid,
+      name: analysisResult.plantName,
       plantName: analysisResult.plantName,
-      species: analysisResult.plantName,
       healthStatus: analysisResult.healthStatus,
       diseaseName: analysisResult.diseaseName || null,
       solution: analysisResult.solution || null,
       imageUrl: uploadRes.url,
+      storagePath: uploadRes.storagePath, // FIX: lưu path thật để xóa ảnh sau này
+      location: 'Chưa phân loại',
       lastWatered: new Date().toISOString(),
     };
 
