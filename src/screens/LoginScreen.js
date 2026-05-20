@@ -131,6 +131,22 @@ const LoginScreen = () => {
               : 'Đã có tài khoản? Đăng nhập'}
           </Text>
         </TouchableOpacity>
+
+        {/* Social Logins */}
+        <View style={styles.socialContainer}>
+          <Text style={styles.socialText}>Hoặc đăng nhập bằng</Text>
+          <View style={styles.socialButtonsContainer}>
+            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#DB4437'}]} onPress={() => Alert.alert('Đang phát triển', 'Google Login đang được tích hợp.')}>
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#4267B2'}]} onPress={() => Alert.alert('Đang phát triển', 'Facebook Login đang được tích hợp.')}>
+              <Text style={styles.socialButtonText}>Facebook</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#000000'}]} onPress={() => Alert.alert('Đang phát triển', 'Apple Login đang được tích hợp.')}>
+              <Text style={styles.socialButtonText}>Apple</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -193,6 +209,30 @@ const styles = StyleSheet.create({
   switchText: {
     color: '#4CAF50',
     fontSize: 15,
+  },
+  socialContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  socialText: {
+    color: '#666',
+    marginBottom: 15,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  socialButton: {
+    flex: 1,
+    paddingVertical: 12,
+    marginHorizontal: 5,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  socialButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 

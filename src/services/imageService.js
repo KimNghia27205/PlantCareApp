@@ -1,5 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from './firebaseConfig';
 
 /**
  * Yêu cầu quyền truy cập Camera và Thư viện ảnh
@@ -117,6 +119,27 @@ export const pickImage = async () => {
     }
     return { success: false, canceled: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Tải ảnh lên Firebase Storage
+ * @param {string} uri - Local URI của ảnh
+ * @param {string} path - Đường dẫn lưu trên Storage (vd: 'avatars/user123.jpg')
+ */
+export const uploadImageToStorage = async (uri, path) => {
+  try {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, blob);
+    
+    const downloadUrl = await getDownloadURL(storageRef);
+    return { success: true, url: downloadUrl };
+  } catch (error) {
+    console.error("Lỗi upload ảnh:", error);
     return { success: false, error: error.message };
   }
 };
