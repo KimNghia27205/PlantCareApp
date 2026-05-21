@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const AdminDashboardScreen = ({ navigation }) => {
   const handleAction = (action) => {
@@ -8,7 +9,14 @@ const AdminDashboardScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Bảng Điều Khiển Admin ⚙️</Text>
+      {/* Header với nút quay lại */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color="#37474f" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Bảng Điều Khiển Admin ⚙️</Text>
+        <View style={{ width: 36 }} />
+      </View>
       
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>👥 Quản lý người dùng</Text>
@@ -41,7 +49,7 @@ const AdminDashboardScreen = ({ navigation }) => {
       </View>
 
       <TouchableOpacity style={[styles.button, { backgroundColor: '#757575', marginTop: 20 }]} onPress={() => navigation.goBack()}>
-        <Text style={styles.buttonText}>Quay lại</Text>
+        <Text style={styles.buttonText}>← Quay lại Hồ Sơ</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -49,7 +57,16 @@ const AdminDashboardScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 20, backgroundColor: '#eceff1' },
-  title: { fontSize: 26, fontWeight: 'bold', color: '#37474f', marginTop: 30, marginBottom: 20, textAlign: 'center' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: Platform.OS === 'ios' ? 50 : 30, marginBottom: 20,
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4,
+  },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#37474f', textAlign: 'center', flex: 1 },
   section: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 20, elevation: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#455a64', marginBottom: 15 },
   button: { backgroundColor: '#607d8b', padding: 15, borderRadius: 8, marginBottom: 10, alignItems: 'center' },
