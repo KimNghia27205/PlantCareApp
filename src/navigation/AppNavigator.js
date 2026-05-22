@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import MyGardenScreen from '../screens/MyGardenScreen';
+import PlantJournalScreen from '../screens/PlantJournalScreen';
 import ScanScreen from '../screens/ScanScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import ForumScreen from '../screens/ForumScreen';
@@ -27,12 +28,20 @@ const ProfileStack = () => (
   </Stack.Navigator>
 );
 
+// Stack dành cho MyGarden và PlantJournal (nằm trong Tab Khu vườn)
+const MyGardenStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="MyGardenMain" component={MyGardenScreen} />
+    <Stack.Screen name="PlantJournal" component={PlantJournalScreen} />
+  </Stack.Navigator>
+);
+
 // Tab Navigation chính của ứng dụng
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={DashboardScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-      <Tab.Screen name="MyGarden" component={MyGardenScreen} options={{ tabBarLabel: 'Khu vườn' }} />
+      <Tab.Screen name="MyGarden" component={MyGardenStack} options={{ tabBarLabel: 'Khu vườn' }} />
       <Tab.Screen name="ScanAI" component={ScanScreen} options={{ tabBarLabel: 'Quét AI' }} />
       <Tab.Screen name="Schedule" component={ScheduleScreen} options={{ tabBarLabel: 'Lịch' }} />
       <Tab.Screen name="Forum" component={ForumScreen} options={{ tabBarLabel: 'Cộng đồng' }} />

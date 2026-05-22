@@ -93,3 +93,89 @@ export const deletePlant = async (plantId) => {
     return { success: false, error: 'Không thể xóa cây trồng này.' };
   }
 };
+
+/**
+ * Thêm một bản ghi nhật ký mới cho cây
+ */
+export const addPlantLog = async (logData, base64Image = null) => {
+  try {
+    let imageUrl = null;
+    let storagePath = null;
+
+    if (base64Image) {
+      const filename = `plant_logs/${logData.userId}/${logData.plantId}_${Date.now()}.jpg`;
+      const storageRefObj = ref(storage, filename);
+      await uploadString(storageRefObj, base64Image, 'base64', { contentType: 'image/jpeg' });
+      imageUrl = await getDownloadURL(storageRefObj);
+      storagePath = filename;
+    }
+
+    const docRef = await addDoc(collection(db, 'plant_logs'), {
+      plantId: logData.plantId,
+      userId: logData.userId,
+      note: logData.note,
+      date: logData.date || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageUrl: imageUrl,
+      storagePath: storagePath
+    });
+
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Lỗi thêm nhật ký:", error);
+    return { success: false, error: 'Không thể lưu nhật ký cây.' };
+  }
+};
+
+/**
+ * Lấy danh sách nhật ký của một cây
+ */
+export const getPlantLogs = async (plantId) => {
+  try {
+    const q = query(collection(db, 'plant_logs'), where("plantId", "==", plantId));
+    const querySnapshot = await getDocs(q);
+
+    const logs = [];
+    querySnapshot.forEach((docSnap) => {
+      logs.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    // Sắp xếp giảm dần theo ngày ghi chú (date) hoặc createdAt
+    logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return { success: true, data: logs };
+  } catch (error) {
+    console.error("Lỗi tải nhật ký:", error);
+    return { success: false, error: 'Không thể tải nhật ký cây trồng.' };
+  }
+};
+
+/**
+ * Xóa một bản ghi nhật ký
+ */
+export const deletePlantLog = async (logId) => {
+  try {
+    const logRef = doc(db, 'plant_logs', logId);
+    const logSnap = await getDoc(logRef);
+
+    if (logSnap.exists()) {
+      const data = logSnap.data();
+      const pathToDelete = data.storagePath;
+
+      if (pathToDelete) {
+        try {
+          const imageRef = ref(storage, pathToDelete);
+          await deleteObject(imageRef);
+        } catch (storageError) {
+          console.warn("Không thể xóa ảnh nhật ký trên Storage:", storageError.code);
+        }
+      }
+    }
+
+    await deleteDoc(logRef);
+    return { success: true };
+  } catch (error) {
+    console.error("Lỗi xóa nhật ký:", error);
+    return { success: false, error: 'Không thể xóa bản ghi nhật ký này.' };
+  }
+};

@@ -121,7 +121,7 @@ const MyGardenScreen = ({ navigation }) => {
   };
 
   const renderPlant = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => openEditModal(item)}>
+    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PlantJournal', { plant: item })}>
       <Image source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1416879598555-46700c0a9693?q=80&w=200&auto=format&fit=crop' }} style={styles.plantImage} />
       <View style={styles.cardContent}>
         <Text style={styles.plantName}>{item.name || item.plantName}</Text>
@@ -130,9 +130,14 @@ const MyGardenScreen = ({ navigation }) => {
           {item.healthStatus?.includes('Khỏe') ? '💚' : '⚠️'} {item.healthStatus || 'Tốt'}
         </Text>
       </View>
-      <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
-        <Text style={styles.deleteText}>Xóa</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
+        <TouchableOpacity style={[styles.actionBtn, { marginBottom: 10 }]} onPress={() => openEditModal(item)}>
+          <Text style={styles.editText}>Sửa</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
+          <Text style={styles.deleteText}>Xóa</Text>
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -207,7 +212,8 @@ const styles = StyleSheet.create({
   plantName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   plantLocation: { color: '#666', marginTop: 5, fontSize: 13 },
   plantStatus: { color: '#4CAF50', marginTop: 5, fontSize: 13, fontWeight: '500' },
-  deleteButton: { padding: 10 },
+  actionBtn: { paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
+  editText: { color: '#4CAF50', fontWeight: 'bold' },
   deleteText: { color: '#FF5252', fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 18, color: '#666', fontWeight: 'bold' },
