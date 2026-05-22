@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform, ScrollView 
 } from 'react-native';
-import { loginUser, registerUser, loginWithGoogle } from '../services/authService';
+import { loginUser, registerUser, loginWithGoogle, sendForgotPasswordEmail } from '../services/authService';
 
 const LoginScreen = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,11 +43,19 @@ const LoginScreen = () => {
       if (!result.success) {
         console.error("Firebase Auth Error:", result.error);
         
+        let errorMessage = result.error;
+        if (isLogin) {
+          // Chỉ định nghĩa thông báo lỗi chung khi nhập sai mật khẩu/tài khoản
+          errorMessage = 'Mật khẩu hoặc tài khoản chưa chính xác vui lòng nhập lại';
+        } else {
+          errorMessage = 'Lỗi: ' + result.error;
+        }
+        
         // Cố gắng hiển thị thông báo lỗi
         if (Platform.OS === 'web') {
-          window.alert('Lỗi: ' + result.error);
+          window.alert(errorMessage);
         } else {
-          Alert.alert('Lỗi', result.error);
+          Alert.alert('Lỗi', errorMessage);
         }
       }
       // Nếu thành công, AuthContext sẽ tự động nhận user và chuyển trang
@@ -74,6 +82,58 @@ const LoginScreen = () => {
       }
     }
     setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert('Vui lòng nhập địa chỉ email vào ô phía trên để nhận liên kết đặt lại mật khẩu.');
+      } else {
+        Alert.alert(
+          'Quên mật khẩu', 
+          'Vui lòng nhập email của bạn vào ô Email phía trên để nhận liên kết khôi phục mật khẩu.'
+        );
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await sendForgotPasswordEmail(email.trim());
+      if (result.success) {
+        if (Platform.OS === 'web') {
+          window.alert('Liên kết đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư!');
+        } else {
+          Alert.alert(
+            'Thành công',
+            'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư đến (hoặc thư rác).'
+          );
+        }
+      } else {
+        console.error("Forgot Password Error:", result.error);
+        let errorMessage = 'Không thể gửi email khôi phục. Vui lòng kiểm tra lại email của bạn.';
+        if (result.error.includes('auth/user-not-found') || result.error.includes('user-not-found')) {
+          errorMessage = 'Tài khoản email này chưa được đăng ký.';
+        } else if (result.error.includes('auth/invalid-email') || result.error.includes('invalid-email')) {
+          errorMessage = 'Địa chỉ email không đúng định dạng.';
+        }
+        
+        if (Platform.OS === 'web') {
+          window.alert(errorMessage);
+        } else {
+          Alert.alert('Lỗi', errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      if (Platform.OS === 'web') {
+        window.alert('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.');
+      } else {
+        Alert.alert('Lỗi', 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -119,6 +179,16 @@ const LoginScreen = () => {
           secureTextEntry
           autoComplete="password"
         />
+
+        {isLogin && (
+          <TouchableOpacity 
+            onPress={handleForgotPassword} 
+            style={styles.forgotPasswordButton}
+            disabled={loading}
+          >
+            <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]} 
@@ -193,6 +263,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 14,
     color: '#333',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  forgotPasswordText: {
+    color: '#4CAF50',
+    fontSize: 14,
+    fontWeight: '600',
   },
   button: {
     backgroundColor: '#4CAF50',

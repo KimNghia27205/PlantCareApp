@@ -4,11 +4,13 @@ import {
   signOut, 
   updateProfile,
   GoogleAuthProvider,
-  signInWithCredential
+  signInWithCredential,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
+
 
 /**
  * Đăng ký tài khoản mới bằng Email/Password
@@ -109,3 +111,16 @@ export const loginWithGoogle = async () => {
     return { success: false, error: error.message };
   }
 };
+
+/**
+ * Gửi email đặt lại mật khẩu (quên mật khẩu)
+ */
+export const sendForgotPasswordEmail = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
