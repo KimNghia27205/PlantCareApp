@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform, ScrollView 
 } from 'react-native';
-import { loginUser, registerUser, loginWithGoogle, sendForgotPasswordEmail } from '../services/authService';
+import { loginUser, registerUser, sendForgotPasswordEmail } from '../services/authService';
 
 const LoginScreen = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -71,18 +71,7 @@ const LoginScreen = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    const result = await loginWithGoogle();
-    if (!result.success) {
-      if (Platform.OS === 'web') {
-        window.alert('Lỗi đăng nhập Google: ' + result.error);
-      } else {
-        Alert.alert('Lỗi đăng nhập Google', result.error);
-      }
-    }
-    setLoading(false);
-  };
+
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -215,15 +204,7 @@ const LoginScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Social Logins */}
-        <View style={styles.socialContainer}>
-          <Text style={styles.socialText}>Hoặc đăng nhập bằng</Text>
-          <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity style={[styles.socialButton, {backgroundColor: '#DB4437'}]} onPress={handleGoogleLogin} disabled={loading}>
-              <Text style={styles.socialButtonText}>Google</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -298,30 +279,7 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontSize: 15,
   },
-  socialContainer: {
-    marginTop: 30,
-    alignItems: 'center',
-  },
-  socialText: {
-    color: '#666',
-    marginBottom: 15,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  socialButton: {
-    flex: 1,
-    paddingVertical: 12,
-    marginHorizontal: 5,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  socialButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+
 });
 
 export default LoginScreen;

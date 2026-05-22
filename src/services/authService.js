@@ -3,11 +3,8 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   updateProfile,
-  GoogleAuthProvider,
-  signInWithCredential,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
 
@@ -66,51 +63,7 @@ export const logoutUser = async () => {
   }
 };
 
-// FIX #11: Không gọi GoogleSignin.configure() ở module-level
-// vì sẽ crash trên Web (browser không có native module)
 
-/**
- * Đăng nhập bằng Google
- */
-export const loginWithGoogle = async () => {
-  try {
-    // FIX #11: Gọi configure() bên trong hàm, chỉ chạy khi user thực sự nhấn nút
-    GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID_TU_FIREBASE.apps.googleusercontent.com',
-    });
-
-    // Kích hoạt Play Services
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-
-    // Mở popup chọn tài khoản Google
-    const userInfo = await GoogleSignin.signIn();
-
-    // Lấy ID Token
-    const { idToken } = await GoogleSignin.getTokens();
-
-    // Tạo Credential cho Firebase
-    const googleCredential = GoogleAuthProvider.credential(idToken);
-
-    // Đăng nhập Firebase
-    const userCredential = await signInWithCredential(auth, googleCredential);
-    const user = userCredential.user;
-
-    // Đảm bảo user có bản ghi trong Firestore
-    await setDoc(doc(db, 'users', user.uid), {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      points: 0,
-      lastLogin: new Date().toISOString()
-    }, { merge: true });
-
-    return { success: true, user };
-  } catch (error) {
-    console.error("Google Sign-in Error:", error);
-    return { success: false, error: error.message };
-  }
-};
 
 /**
  * Gửi email đặt lại mật khẩu (quên mật khẩu)
