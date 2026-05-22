@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImage as pickImageFromService, takePhoto as takePhotoFromService } from '../services/imageService';
 import { getPlantLogs, addPlantLog, deletePlantLog } from '../services/plantService';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -21,7 +21,31 @@ const PlantJournalScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchLogs();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    const checkAutoPhoto = async () => {
+      if (route.params?.autoTakePhoto) {
+        // Clear param immediately to avoid loop
+        navigation.setParams({ autoTakePhoto: undefined });
+        
+        const result = await takePhotoFromService();
+        if (result.success) {
+          setImageUri({ uri: result.uri, base64: result.base64 });
+          setModalVisible(true);
+        } else if (result.error) {
+          Alert.alert("Lỗi", result.error);
+        }
+      }
+    };
+    checkAutoPhoto();
+  }, [route.params?.autoTakePhoto]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -33,20 +57,11 @@ const PlantJournalScreen = ({ route, navigation }) => {
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền truy cập thư viện ảnh để đính kèm hình ảnh.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0]);
+    const result = await pickImageFromService();
+    if (result.success) {
+      setImageUri({ uri: result.uri, base64: result.base64 });
+    } else if (result.error) {
+      Alert.alert("Lỗi", result.error);
     }
   };
 

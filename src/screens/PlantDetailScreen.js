@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,9 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { updatePlant, getPlantLogs } from '../services/plantService';
+import { updatePlant, getPlantLogs, addPlantLog } from '../services/plantService';
 import { supabase } from '../services/supabaseClient';
+import { AuthContext } from '../context/AuthContext';
 
 const { width: windowWidth } = Dimensions.get('window');
 const width = Platform.OS === 'web' ? Math.min(windowWidth, 420) : windowWidth;
@@ -73,6 +74,7 @@ const getCareSpecs = (plantName = '') => {
 
 const PlantDetailScreen = ({ route, navigation }) => {
   const { plant: initialPlant, plantId } = route?.params || {};
+  const { user } = useContext(AuthContext);
   
   const [plant, setPlant] = useState(initialPlant || null);
   const [loading, setLoading] = useState(!initialPlant);
@@ -98,6 +100,22 @@ const PlantDetailScreen = ({ route, navigation }) => {
       }
     }
   }, [plant?.lastWatered, diffDays]);
+
+  const fetchLatestLog = async (targetPlantId) => {
+    setLoadingLogs(true);
+    try {
+      const result = await getPlantLogs(targetPlantId);
+      if (result.success && result.data && result.data.length > 0) {
+        setLatestLog(result.data[0]);
+      } else {
+        setLatestLog(null);
+      }
+    } catch (err) {
+      console.warn("Lỗi tải nhật ký chi tiết cây:", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -142,24 +160,23 @@ const PlantDetailScreen = ({ route, navigation }) => {
       }
 
       if (activePlant) {
-        setLoadingLogs(true);
-        try {
-          const result = await getPlantLogs(activePlant.id);
-          if (result.success && result.data && result.data.length > 0) {
-            setLatestLog(result.data[0]);
-          } else {
-            setLatestLog(null);
-          }
-        } catch (err) {
-          console.warn("Lỗi tải nhật ký chi tiết cây:", err);
-        } finally {
-          setLoadingLogs(false);
-        }
+        await fetchLatestLog(activePlant.id);
       }
     };
 
     loadData();
   }, [plantId, initialPlant?.id]);
+
+  useEffect(() => {
+    const targetPlantId = plantId || initialPlant?.id || plant?.id;
+    if (!targetPlantId) return;
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchLatestLog(targetPlantId);
+    });
+
+    return unsubscribe;
+  }, [navigation, plantId, initialPlant?.id, plant?.id]);
 
   const handleWaterPress = async () => {
     if (!plant) return;
@@ -178,11 +195,66 @@ const PlantDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleQuickWaterPress = () => {
+    if (isWatered) {
+      Alert.alert('Thông báo', 'Cây đã được tưới đầy đủ nước hôm nay rồi! Bạn không cần tưới thêm đâu nhé. 💧');
+    } else {
+      handleWaterPress();
+    }
+  };
+
+  const handleFertilizePress = () => {
+    if (!plant) return;
+    Alert.alert(
+      'Xác nhận bón phân',
+      `Bạn có muốn ghi nhận đã bón phân định kỳ cho cây ${plant.plantName || plant.name} hôm nay không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đồng ý',
+          onPress: async () => {
+            try {
+              const res = await addPlantLog({
+                plantId: plant.id,
+                userId: user?.uid || plant.userId,
+                note: `🪴 Đã bón phân định kỳ: Bổ sung chất dinh dưỡng hữu cơ và các khoáng chất thiết yếu giúp bộ rễ phát triển chắc khỏe và lá xanh tươi.`,
+                date: new Date().toISOString()
+              });
+              if (res.success) {
+                Alert.alert('Thành công', `🎉 Đã ghi nhận bón phân thành công cho ${plant.plantName || plant.name}!`);
+                await fetchLatestLog(plant.id);
+              } else {
+                Alert.alert('Lỗi', 'Không thể ghi nhận bón phân lên máy chủ.');
+              }
+            } catch (error) {
+              console.error("Lỗi khi bón phân:", error);
+              Alert.alert('Lỗi', 'Đã xảy ra lỗi khi ghi nhận bón phân.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleNavigationToJournal = () => {
     if (!plant) return;
-    navigation.navigate('MyGarden', {
-      screen: 'PlantJournal',
-      params: { plant }
+    navigation.navigate('MainTabs', {
+      screen: 'MyGarden',
+      params: {
+        screen: 'PlantJournal',
+        params: { plant }
+      }
+    });
+  };
+
+  const handleCameraQuickAction = () => {
+    if (!plant) return;
+    navigation.navigate('MainTabs', {
+      screen: 'MyGarden',
+      params: {
+        screen: 'PlantJournal',
+        params: { plant, autoTakePhoto: true }
+      }
     });
   };
 
@@ -311,20 +383,24 @@ const PlantDetailScreen = ({ route, navigation }) => {
             {/* Water Action */}
             <TouchableOpacity 
               style={styles.actionButtonWrapper}
-              onPress={handleWaterPress}
+              onPress={handleQuickWaterPress}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconContainer, { borderColor: '#10B981' }, isWatered && { opacity: 0.6 }]}>
-                <Ionicons name="water-outline" size={24} color="#10B981" />
+              <View style={[
+                styles.actionIconContainer, 
+                { borderColor: '#10B981' }, 
+                isWatered && { backgroundColor: 'rgba(16, 185, 129, 0.15)' }
+              ]}>
+                <Ionicons name={isWatered ? "water" : "water-outline"} size={24} color="#10B981" />
               </View>
-              <Text style={styles.actionLabel}>Tưới nước</Text>
+              <Text style={styles.actionLabel}>{isWatered ? "Đã tưới" : "Tưới nước"}</Text>
             </TouchableOpacity>
 
             {/* Fertilizer Action */}
             <TouchableOpacity 
               style={styles.actionButtonWrapper}
               activeOpacity={0.7}
-              onPress={() => Alert.alert('Bón phân', `Bổ sung 5g phân bón hữu cơ nhẹ cho ${plant.plantName || plant.name}.`)}
+              onPress={handleFertilizePress}
             >
               <View style={[styles.actionIconContainer, { borderColor: '#8B5CF6' }]}>
                 <Ionicons name="leaf-outline" size={24} color="#8B5CF6" />
@@ -336,7 +412,7 @@ const PlantDetailScreen = ({ route, navigation }) => {
             <TouchableOpacity 
               style={styles.actionButtonWrapper}
               activeOpacity={0.7}
-              onPress={handleNavigationToJournal}
+              onPress={handleCameraQuickAction}
             >
               <View style={[styles.actionIconContainer, { borderColor: '#3B82F6' }]}>
                 <Ionicons name="camera-outline" size={24} color="#3B82F6" />

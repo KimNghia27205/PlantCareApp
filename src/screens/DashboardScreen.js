@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform, Modal, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getPlantsByUser } from '../services/plantService';
@@ -14,6 +15,7 @@ const DashboardScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [dismissedIds, setDismissedIds] = useState([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const activeNotifications = notifications.filter(item => !dismissedIds.includes(item.id));
 
@@ -168,6 +170,17 @@ const DashboardScreen = ({ navigation }) => {
   }, [navigation, user]);
 
   const fetchPlants = async () => {
+    try {
+      const val = await AsyncStorage.getItem('notifications_enabled');
+      if (val !== null) {
+        setNotificationsEnabled(val === 'true');
+      } else {
+        setNotificationsEnabled(true);
+      }
+    } catch (e) {
+      console.warn("Lỗi đọc cài đặt thông báo:", e);
+    }
+
     if (user) {
       const res = await getPlantsByUser(user.uid);
       if (res.success) {
@@ -190,7 +203,7 @@ const DashboardScreen = ({ navigation }) => {
         </View>
         <TouchableOpacity style={styles.notificationBtn} onPress={() => setShowNotifications(true)}>
           <Ionicons name="notifications" size={24} color="#3E8E41" />
-          {activeNotifications.length > 0 && (
+          {notificationsEnabled && activeNotifications.length > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{activeNotifications.length}</Text>
             </View>

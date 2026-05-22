@@ -11,17 +11,18 @@ const ScheduleScreen = ({ navigation }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchSchedules(); }, [user?.uid]);
+  useEffect(() => { fetchSchedules(true); }, [user?.uid]);
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = async (showLoading = false) => {
     if (!user) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const result = await getPlantsByUser(user.uid);
       if (!result.success) {
         throw new Error(result.error);
       }
       const now = new Date();
+      const today = new Date();
       let taskList = [];
 
       result.data.forEach((plant) => {
@@ -39,11 +40,19 @@ const ScheduleScreen = ({ navigation }) => {
         else if (diffDays === 0) { status = 'today'; timeLabel = 'Hôm nay'; }
         else { timeLabel = `Còn ${diffDays} ngày`; }
 
+        const lastWateredDate = plant.lastWatered ? new Date(plant.lastWatered) : null;
+        const isWateredToday = lastWateredDate ? (
+          lastWateredDate.getDate() === today.getDate() &&
+          lastWateredDate.getMonth() === today.getMonth() &&
+          lastWateredDate.getFullYear() === today.getFullYear()
+        ) : false;
+
         taskList.push({
           id: plant.id, plantName: plant.name || plant.plantName,
           imageUrl: plant.imageUrl, location: plant.location || '',
           action: 'Tưới nước', timeLabel, status, nextWatering,
           waterIntervalDays,
+          isWateredToday,
         });
       });
 
@@ -52,7 +61,7 @@ const ScheduleScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Lỗi tải lịch:", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -61,7 +70,7 @@ const ScheduleScreen = ({ navigation }) => {
       const result = await updatePlant(id, { lastWatered: new Date().toISOString() });
       if (result.success) {
         Alert.alert('✅ Hoàn thành!', `Đã ghi nhận ${actionName.toLowerCase()} thành công!`);
-        fetchSchedules();
+        fetchSchedules(false);
       } else {
         Alert.alert('Lỗi', result.error || 'Không thể cập nhật trạng thái.');
       }
@@ -117,7 +126,13 @@ const ScheduleScreen = ({ navigation }) => {
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.doneButton, { opacity: item.status === 'upcoming' ? 0.7 : 1 }]}
+          style={[
+            styles.doneButton,
+            item.isWateredToday 
+              ? { backgroundColor: '#81C784', opacity: 0.8 } 
+              : { opacity: item.status === 'upcoming' ? 0.7 : 1 }
+          ]}
+          disabled={item.isWateredToday}
           onPress={() => handleMarkAsDone(item.id, item.action)}
         >
           <Ionicons name="checkmark" size={20} color="#fff" />
@@ -134,7 +149,7 @@ const ScheduleScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={22} color={t.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: '#E65100' }]}>Lịch chăm sóc</Text>
-        <TouchableOpacity onPress={fetchSchedules} style={styles.refreshBtn}>
+        <TouchableOpacity onPress={() => fetchSchedules(true)} style={styles.refreshBtn}>
           <Ionicons name="refresh" size={20} color="#E65100" />
         </TouchableOpacity>
       </View>

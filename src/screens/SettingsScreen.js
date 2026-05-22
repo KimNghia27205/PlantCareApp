@@ -1,10 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 
 const SettingsScreen = ({ navigation }) => {
   const { theme, isDark, toggleTheme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const val = await AsyncStorage.getItem('notifications_enabled');
+        if (val !== null) {
+          setNotificationsEnabled(val === 'true');
+        }
+      } catch (e) {
+        console.warn("Lỗi đọc cài đặt thông báo:", e);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleToggleNotifications = async (value) => {
+    setNotificationsEnabled(value);
+    try {
+      await AsyncStorage.setItem('notifications_enabled', value ? 'true' : 'false');
+    } catch (e) {
+      console.warn("Lỗi lưu cài đặt thông báo:", e);
+    }
+  };
 
   const t = theme; // shorthand
 
@@ -23,7 +47,7 @@ const SettingsScreen = ({ navigation }) => {
             </View>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleToggleNotifications}
               trackColor={{ false: '#ccc', true: '#81C784' }}
               thumbColor={notificationsEnabled ? '#4CAF50' : '#f4f3f4'}
             />
