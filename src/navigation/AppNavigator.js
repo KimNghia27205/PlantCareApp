@@ -10,6 +10,7 @@ import { AuthContext } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import MyGardenScreen from '../screens/MyGardenScreen';
+import PlantJournalScreen from '../screens/PlantJournalScreen';
 import ScanScreen from '../screens/ScanScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import ForumScreen from '../screens/ForumScreen';
@@ -122,6 +123,14 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   );
 };
 
+// Stack dành cho MyGarden và PlantJournal (nằm trong Tab Khu vườn)
+const MyGardenStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="MyGardenMain" component={MyGardenScreen} />
+    <Stack.Screen name="PlantJournal" component={PlantJournalScreen} />
+  </Stack.Navigator>
+);
+
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -129,7 +138,7 @@ const MainTabNavigator = () => {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={DashboardScreen} />
-      <Tab.Screen name="MyGarden" component={MyGardenScreen} />
+      <Tab.Screen name="MyGarden" component={MyGardenStack} />
       <Tab.Screen name="ScanAI" component={ScanScreen} />
       <Tab.Screen name="Schedule" component={ScheduleScreen} />
       <Tab.Screen name="Forum" component={ForumScreen} />

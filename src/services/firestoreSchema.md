@@ -40,3 +40,18 @@ Lưu trữ các bài viết được người dùng chia sẻ trên diễn đàn
 - `likes` (number): Số lượng lượt thích.
 - `comments` (array hoặc subcollection): Danh sách hoặc số lượng bình luận.
 - `createdAt` (string/timestamp): Thời điểm đăng bài.
+
+---
+
+## 4. Collection: `plant_logs` (Nhật ký tăng trưởng)
+Lưu trữ các ghi chú và hình ảnh theo dõi quá trình lớn lên của cây.
+
+**Document Fields:**
+- `id` (string): ID duy nhất của nhật ký.
+- `plantId` (string): ID của cây trồng (liên kết với `plants`).
+- `userId` (string): `uid` của người sở hữu.
+- `note` (string): Nội dung ghi chú.
+- `imageUrl` (string): URL ảnh chụp cây ở thời điểm ghi chú (tùy chọn, lưu trên Firebase Storage).
+- `storagePath` (string): Đường dẫn gốc của ảnh trên Firebase Storage để dễ dàng xóa.
+- `date` (string/timestamp): Ngày ghi nhận (do người dùng chọn hoặc tự động).
+- `createdAt` (string/timestamp): Thời điểm tạo ghi chú trên hệ thống.

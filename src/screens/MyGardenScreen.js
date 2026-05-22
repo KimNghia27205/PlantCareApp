@@ -120,7 +120,7 @@ const MyGardenScreen = ({ navigation }) => {
   const renderPlant = ({ item }) => {
     const isHealthy = item.healthStatus?.toLowerCase().includes('khỏe');
     return (
-      <TouchableOpacity style={[styles.card, { backgroundColor: t.cardBg }]} onPress={() => openEditModal(item)} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.card, { backgroundColor: t.cardBg }]} onPress={() => navigation.navigate('PlantJournal', { plant: item })} activeOpacity={0.85}>
         <Image
           source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1416879598555-46700c0a9693?q=80&w=400&auto=format&fit=crop' }}
           style={styles.plantImage}
