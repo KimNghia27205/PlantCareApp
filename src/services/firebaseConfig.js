@@ -44,5 +44,7 @@ const db = getFirestore(app);
 
 // 4. Khởi tạo Cloud Storage
 const storage = getStorage(app);
+storage.maxUploadRetryTime = 4000;    // Thử lại tối đa 4 giây khi upload
+storage.maxOperationRetryTime = 4000; // Thử lại tối đa 4 giây cho tác vụ khác
 
 export { app, auth, db, storage };

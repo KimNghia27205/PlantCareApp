@@ -7,9 +7,8 @@ import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { logoutUser } from '../services/authService';
 import { pickImage, uploadImageToStorage } from '../services/imageService';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../services/firebaseConfig';
-import { updateProfile, reload } from 'firebase/auth';
+import { getUserProfile, updateUserProfile } from '../services/authService';
+import { Platform } from 'react-native';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, setUser } = useContext(AuthContext);
@@ -24,10 +23,9 @@ const ProfileScreen = ({ navigation }) => {
   const fetchUserData = async () => {
     if (!user) return;
     try {
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setUserData(docSnap.data());
+      const result = await getUserProfile(user.uid);
+      if (result.success && result.data) {
+        setUserData(result.data);
       } else {
         setUserData({ displayName: user.displayName, email: user.email, points: 0 });
       }
@@ -37,14 +35,21 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Đăng xuất', style: 'destructive', onPress: async () => {
-          await logoutUser();
-        }
+    if (Platform.OS === 'web') {
+      const confirmLogout = window.confirm('Bạn có chắc muốn đăng xuất?');
+      if (confirmLogout) {
+        await logoutUser();
       }
-    ]);
+    } else {
+      Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đăng xuất', style: 'destructive', onPress: async () => {
+            await logoutUser();
+          }
+        }
+      ]);
+    }
   };
 
   const handleChangeAvatar = async () => {
@@ -55,15 +60,16 @@ const ProfileScreen = ({ navigation }) => {
         const path = `avatars/${user.uid}_${Date.now()}.jpg`;
         const uploadResult = await uploadImageToStorage(result.uri, path);
         if (uploadResult.success) {
-          await updateProfile(auth.currentUser, { photoURL: uploadResult.url });
-          await reload(auth.currentUser);
-          const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, { photoURL: uploadResult.url });
-          setUser(auth.currentUser);
-          await fetchUserData();
-          Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công!");
+          const updateRes = await updateUserProfile(user.uid, { photoURL: uploadResult.url });
+          if (updateRes.success) {
+            await fetchUserData();
+            Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công!");
+          } else {
+            Alert.alert("Lỗi", "Không thể cập nhật ảnh đại diện vào cơ sở dữ liệu: " + updateRes.error);
+          }
         } else {
-          Alert.alert("Lỗi", uploadResult.error || "Không thể tải ảnh lên.");
+          const webHint = Platform.OS === 'web' ? ' (Có thể do lỗi cấu hình CORS của Supabase Storage trên trình duyệt Web.)' : '';
+          Alert.alert("Lỗi tải ảnh", (uploadResult.error || "Không thể tải ảnh lên.") + webHint);
         }
       } catch (error) {
         Alert.alert("Lỗi", "Không thể cập nhật ảnh đại diện: " + error.message);
@@ -73,8 +79,7 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const avatarUri = auth.currentUser?.photoURL
-    || userData?.photoURL
+  const avatarUri = userData?.photoURL
     || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=4CAF50&color=fff&size=150`;
 
   return (
@@ -97,7 +102,7 @@ const ProfileScreen = ({ navigation }) => {
 
           <View style={styles.infoContainer}>
             <Text style={[styles.name, { color: t.text }]}>
-              {auth.currentUser?.displayName || userData?.displayName || 'Chưa cập nhật tên'}
+              {userData?.displayName || user?.displayName || 'Chưa cập nhật tên'}
             </Text>
             <Text style={[styles.email, { color: t.subText }]}>{user?.email}</Text>
           </View>

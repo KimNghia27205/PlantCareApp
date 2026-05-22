@@ -1,7 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebaseConfig';
+import { supabase } from './supabaseClient';
 
 /**
  * Yêu cầu quyền truy cập Camera và Thư viện ảnh
@@ -124,7 +123,7 @@ export const pickImage = async () => {
 };
 
 /**
- * Tải ảnh lên Firebase Storage
+ * Tải ảnh lên Supabase Storage
  * @param {string} uri - Local URI của ảnh
  * @param {string} path - Đường dẫn lưu trên Storage (vd: 'avatars/user123.jpg')
  */
@@ -133,13 +132,26 @@ export const uploadImageToStorage = async (uri, path) => {
     const response = await fetch(uri);
     const blob = await response.blob();
     
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, blob);
+    // Loại bỏ tiền tố '/' ở đầu đường dẫn nếu có để tránh lỗi tạo thư mục rỗng trong Supabase Storage
+    const cleanedPath = path.startsWith('/') ? path.slice(1) : path;
+    const bucket = 'plants'; // Tên bucket lưu trữ của Supabase
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(cleanedPath, blob, {
+        contentType: blob.type || 'image/jpeg',
+        upsert: true
+      });
+      
+    if (error) throw error;
     
-    const downloadUrl = await getDownloadURL(storageRef);
-    return { success: true, url: downloadUrl };
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(cleanedPath);
+      
+    return { success: true, url: publicUrl };
   } catch (error) {
-    console.error("Lỗi upload ảnh:", error);
+    console.error("Lỗi upload ảnh Supabase:", error);
     return { success: false, error: error.message };
   }
 };

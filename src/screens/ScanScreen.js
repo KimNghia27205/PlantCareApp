@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView, Platform } from 'react-native';
 import { takePhoto, pickImage } from '../services/imageService';
 import { analyzePlantImage } from '../services/aiService'; // FIX #1: đúng tên hàm
 import { uploadPlantImage, addPlant } from '../services/plantService';
@@ -52,10 +52,36 @@ const ScanScreen = ({ navigation }) => {
     if (!result || !imageBase64 || !user) return;
     setSaving(true);
     try {
+      let finalImageUrl = '';
+      let finalStoragePath = '';
+
       const uploadRes = await uploadPlantImage(imageBase64, user.uid);
-      if (!uploadRes.success) {
-        Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
-        return;
+      if (uploadRes.success) {
+        finalImageUrl = uploadRes.url;
+        finalStoragePath = uploadRes.storagePath;
+      } else {
+        let proceed = false;
+        if (Platform.OS === 'web') {
+          proceed = window.confirm(
+            '⚠️ Không thể tải ảnh cây lên Supabase Storage (do lỗi CORS trên môi trường Web).\n\nBạn có muốn tiếp tục lưu thông tin cây mà không kèm ảnh không?'
+          );
+        } else {
+          proceed = await new Promise((resolve) => {
+            Alert.alert(
+              '⚠️ Lỗi tải ảnh lên Storage',
+              'Không thể tải ảnh cây lên Supabase Storage. Bạn có muốn tiếp tục lưu thông tin cây mà không kèm ảnh không?',
+              [
+                { text: 'Hủy', onPress: () => resolve(false), style: 'cancel' },
+                { text: 'Tiếp tục', onPress: () => resolve(true) }
+              ]
+            );
+          });
+        }
+
+        if (!proceed) {
+          setSaving(false);
+          return;
+        }
       }
 
       const plantData = {
@@ -66,8 +92,8 @@ const ScanScreen = ({ navigation }) => {
         diseaseName: result.diseaseName || null,
         solution: result.solution || null,
         waterIntervalDays: parseInt(result.waterIntervalDays) || 2,
-        imageUrl: uploadRes.url,
-        storagePath: uploadRes.storagePath,
+        imageUrl: finalImageUrl,
+        storagePath: finalStoragePath || null,
         location: 'Chưa phân loại',
         createdAt: new Date().toISOString(),
       };
@@ -75,7 +101,15 @@ const ScanScreen = ({ navigation }) => {
       const saveRes = await addPlant(plantData);
       if (saveRes.success) {
         Alert.alert('Thành công!', 'Đã lưu cây vào Khu vườn của bạn.', [
-          { text: 'OK', onPress: () => { setImageUri(null); setImageBase64(null); setResult(null); } }
+          { 
+            text: 'OK', 
+            onPress: () => { 
+              setImageUri(null); 
+              setImageBase64(null); 
+              setResult(null); 
+              navigation.navigate('MyGarden');
+            } 
+          }
         ]);
       } else {
         Alert.alert('Lỗi', saveRes.error);
@@ -169,7 +203,7 @@ const ScanScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f0f7f0', alignItems: 'center' },
+  container: { flexGrow: 1, padding: 20, paddingBottom: 120, backgroundColor: '#f0f7f0', alignItems: 'center' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#2E7D32', marginTop: 30, marginBottom: 10 },
   subtitle: { textAlign: 'center', color: '#666', marginBottom: 20, paddingHorizontal: 10 },
   imageContainer: { width: '100%', height: 300, backgroundColor: '#e0e0e0', borderRadius: 15, overflow: 'hidden', marginBottom: 20 },

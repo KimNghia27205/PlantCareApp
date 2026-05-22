@@ -41,7 +41,7 @@ const LoginScreen = () => {
       }
 
       if (!result.success) {
-        console.error("Firebase Auth Error:", result.error);
+        console.error("Supabase Auth Error:", result.error);
         
         let errorMessage = result.error;
         if (isLogin) {
@@ -244,6 +244,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 14,
     color: '#333',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',

@@ -3,9 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Alert,
   ActivityIndicator, Image, Modal, TextInput, Platform, ScrollView
 } from 'react-native';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
-import { deletePlant, addPlant } from '../services/plantService';
+import { deletePlant, addPlant, getPlantsByUser, updatePlant } from '../services/plantService';
 import { pickImage, uploadImageToStorage } from '../services/imageService';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -24,15 +22,24 @@ const MyGardenScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  useEffect(() => { fetchPlants(); }, [user?.uid]);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchPlants();
+    });
+    fetchPlants();
+    return unsubscribe;
+  }, [navigation, user?.uid]);
 
   const fetchPlants = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const q = query(collection(db, 'plants'), where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      setPlants(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const result = await getPlantsByUser(user.uid);
+      if (result.success) {
+        setPlants(result.data);
+      } else {
+        console.error(result.error);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -82,17 +89,46 @@ const MyGardenScreen = ({ navigation }) => {
           `plants/${user.uid}/${Date.now()}.jpg`
         );
         setUploadingImage(false);
-        if (uploadRes.success) finalImageUrl = uploadRes.url;
+        
+        if (uploadRes.success) {
+          finalImageUrl = uploadRes.url;
+        } else {
+          let proceed = false;
+          if (Platform.OS === 'web') {
+            proceed = window.confirm(
+              '⚠️ Không thể tải ảnh cây lên (do cấu hình CORS Supabase trên trình duyệt Web).\n\nBạn có muốn tiếp tục lưu thông tin cây mà không kèm ảnh không?'
+            );
+          } else {
+            proceed = await new Promise((resolve) => {
+              Alert.alert(
+                '⚠️ Lỗi tải ảnh',
+                'Không thể tải ảnh cây lên Supabase Storage. Bạn có muốn tiếp tục lưu thông tin cây mà không kèm ảnh không?',
+                [
+                  { text: 'Hủy', onPress: () => resolve(false), style: 'cancel' },
+                  { text: 'Tiếp tục', onPress: () => resolve(true) }
+                ]
+              );
+            });
+          }
+          
+          if (!proceed) {
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       if (editMode) {
-        const ref = doc(db, 'plants', selectedPlantId);
         const updateData = { name: plantName, plantName, location: location || 'Chưa phân loại' };
         if (finalImageUrl) updateData.imageUrl = finalImageUrl;
-        await updateDoc(ref, updateData);
-        setPlants(prev => prev.map(p =>
-          p.id === selectedPlantId ? { ...p, ...updateData } : p
-        ));
+        const result = await updatePlant(selectedPlantId, updateData);
+        if (result.success) {
+          setPlants(prev => prev.map(p =>
+            p.id === selectedPlantId ? { ...p, ...updateData } : p
+          ));
+        } else {
+          Alert.alert('Lỗi', result.error || 'Không thể cập nhật thông tin cây.');
+        }
       } else {
         const result = await addPlant({
           userId: user.uid, name: plantName, plantName,
@@ -120,7 +156,11 @@ const MyGardenScreen = ({ navigation }) => {
   const renderPlant = ({ item }) => {
     const isHealthy = item.healthStatus?.toLowerCase().includes('khỏe');
     return (
-      <TouchableOpacity style={[styles.card, { backgroundColor: t.cardBg }]} onPress={() => navigation.navigate('PlantJournal', { plant: item })} activeOpacity={0.85}>
+      <TouchableOpacity 
+        style={[styles.card, { backgroundColor: t.cardBg }]} 
+        onPress={() => navigation.navigate('PlantDetail', { plant: item })} 
+        activeOpacity={0.85}
+      >
         <Image
           source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1416879598555-46700c0a9693?q=80&w=400&auto=format&fit=crop' }}
           style={styles.plantImage}
@@ -160,15 +200,12 @@ const MyGardenScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       <View style={[styles.header, { backgroundColor: t.bg }]}>
         <Text style={styles.title}>Khu vườn của tôi</Text>
-        <TouchableOpacity style={styles.addHeaderBtn} onPress={openAddModal}>
-          <Ionicons name="add" size={22} color="#fff" />
-        </TouchableOpacity>
       </View>
 
       {plants.length > 0 && (
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: t.cardBg }]}>
-            <Text style={styles.statNumber}>{plants.length}</Text>
+            <Text style={[styles.statNumber, { color: t.text }]}>{plants.length}</Text>
             <Text style={[styles.statLabel, { color: t.subText }]}>🌿 Tổng cây</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: t.cardBg }]}>
@@ -351,7 +388,18 @@ const styles = StyleSheet.create({
   changeImageOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 6, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   changeImageText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  input: { borderWidth: 1, borderRadius: 10, padding: 13, marginBottom: 16, fontSize: 15 },
+  input: { 
+    borderWidth: 1, 
+    borderRadius: 10, 
+    padding: 13, 
+    marginBottom: 16, 
+    fontSize: 15,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
+  },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   cancelBtn: { flex: 1, padding: 14, alignItems: 'center', borderRadius: 12 },
   cancelBtnText: { fontWeight: 'bold', fontSize: 15 },

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getPlantLogs, addPlantLog, deletePlantLog } from '../services/plantService';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const PlantJournalScreen = ({ route, navigation }) => {
   const { plant } = route.params;
   const { user } = useContext(AuthContext);
+  const { theme, isDark } = useTheme();
+  const t = theme;
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -94,14 +97,14 @@ const PlantJournalScreen = ({ route, navigation }) => {
     const timeString = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <View style={styles.logCard}>
+      <View style={[styles.logCard, { backgroundColor: t.cardBg, borderColor: t.dark ? '#2A2A2A' : '#e8f5e9', borderWidth: t.dark ? 1 : 0 }]}>
         <View style={styles.logHeader}>
-          <Text style={styles.logDate}>{dateString} - {timeString}</Text>
+          <Text style={[styles.logDate, { color: t.subText }]}>{dateString} - {timeString}</Text>
           <TouchableOpacity onPress={() => handleDeleteLog(item.id)}>
             <Text style={styles.deleteText}>Xóa</Text>
           </TouchableOpacity>
         </View>
-        {item.note ? <Text style={styles.logNote}>{item.note}</Text> : null}
+        {item.note ? <Text style={[styles.logNote, { color: t.text }]}>{item.note}</Text> : null}
         {item.imageUrl ? (
           <Image source={{ uri: item.imageUrl }} style={styles.logImage} />
         ) : null}
@@ -110,54 +113,55 @@ const PlantJournalScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: t.headerBg, borderBottomWidth: t.dark ? 1 : 0, borderBottomColor: t.tabBarBorder, elevation: t.dark ? 0 : 3 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, { color: '#10B981' }]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{plant.name || plant.plantName}</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]} numberOfLines={1}>{plant.name || plant.plantName}</Text>
         <View style={{ width: 80 }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 50 }} />
       ) : logs.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Chưa có ghi chú nào.</Text>
-          <Text style={styles.emptySubText}>Bấm nút + để thêm nhật ký theo dõi!</Text>
+          <Text style={[styles.emptyText, { color: t.text }]}>Chưa có ghi chú nào.</Text>
+          <Text style={[styles.emptySubText, { color: t.subText }]}>Bấm nút + để thêm nhật ký theo dõi!</Text>
         </View>
       ) : (
         <FlatList
           data={logs}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 20, paddingBottom: 80 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 160 }}
         />
       )}
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: '#10B981' }]} onPress={() => setModalVisible(true)}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
       {/* Add Log Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Thêm nhật ký</Text>
+          <View style={[styles.modalContent, { backgroundColor: t.cardBg, borderColor: t.dark ? '#333' : '#eee', borderWidth: t.dark ? 1 : 0 }]}>
+            <Text style={[styles.modalTitle, { color: '#10B981' }]}>Thêm nhật ký</Text>
             
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.dark ? '#121212' : '#fff', borderColor: t.inputBorder, color: t.text }]}
               placeholder="Nhập ghi chú về sự phát triển..."
+              placeholderTextColor={t.subText}
               multiline
               numberOfLines={4}
               value={note}
               onChangeText={setNote}
             />
 
-            <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
-              <Text style={styles.imagePickerText}>
+            <TouchableOpacity style={[styles.imagePickerBtn, { backgroundColor: t.dark ? '#254E27' : '#e8f5e9' }]} onPress={pickImage}>
+              <Text style={[styles.imagePickerText, { color: t.dark ? '#A3E635' : '#2E7D32' }]}>
                 {imageUri ? '🔄 Thay đổi ảnh' : '📸 Thêm ảnh chụp hiện tại'}
               </Text>
             </TouchableOpacity>
@@ -168,15 +172,15 @@ const PlantJournalScreen = ({ route, navigation }) => {
 
             <View style={styles.modalActions}>
               <TouchableOpacity 
-                style={styles.cancelBtn} 
+                style={[styles.cancelBtn, { backgroundColor: t.dark ? '#2a2a2a' : '#eee' }]} 
                 onPress={() => {
                   setModalVisible(false);
                   setNote('');
                   setImageUri(null);
                 }}>
-                <Text style={styles.cancelBtnText}>Hủy</Text>
+                <Text style={[styles.cancelBtnText, { color: t.subText }]}>Hủy</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveLog} disabled={submitting}>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#10B981' }]} onPress={handleSaveLog} disabled={submitting}>
                 {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Lưu</Text>}
               </TouchableOpacity>
             </View>
@@ -210,12 +214,25 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 18, color: '#666', fontWeight: 'bold' },
   emptySubText: { fontSize: 14, color: '#999', marginTop: 10 },
-  fab: { position: 'absolute', bottom: 30, right: 30, backgroundColor: '#4CAF50', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  fab: { position: 'absolute', bottom: 95, right: 20, backgroundColor: '#4CAF50', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5 },
   fabText: { color: '#fff', fontSize: 30, fontWeight: 'bold', marginTop: -2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 15, padding: 25, elevation: 5 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 20, textAlign: 'center' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 15, fontSize: 16, textAlignVertical: 'top' },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#ddd', 
+    borderRadius: 8, 
+    padding: 12, 
+    marginBottom: 15, 
+    fontSize: 16, 
+    textAlignVertical: 'top',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
+  },
   imagePickerBtn: { backgroundColor: '#e8f5e9', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 15 },
   imagePickerText: { color: '#2E7D32', fontWeight: 'bold' },
   previewImage: { width: '100%', height: 150, borderRadius: 8, marginBottom: 15, resizeMode: 'cover' },

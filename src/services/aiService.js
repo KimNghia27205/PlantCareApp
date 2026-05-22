@@ -90,6 +90,14 @@ export const analyzePlantImage = async (base64Image) => {
   } catch (error) {
     console.error("Lỗi khi phân tích AI:", error);
 
+    // Phân biệt lỗi khóa API bị rò rỉ (Leaked 403)
+    if (error.message && (error.message.includes('leaked') || error.message.includes('API key was reported as leaked') || error.message.includes('403'))) {
+      return {
+        success: false,
+        error: 'Khóa API Gemini hiện tại đã bị Google khóa do phát hiện rò rỉ (Leaked API Key - Lỗi 403).\n\n👉 Cách khắc phục rất đơn giản:\n1. Truy cập https://aistudio.google.com/ để tạo một API Key mới miễn phí.\n2. Mở file ".env" tại thư mục gốc dự án.\n3. Thay thế khóa cũ ở dòng "EXPO_PUBLIC_GEMINI_API_KEY" bằng khóa mới vừa tạo.\n4. Tắt Expo Server hiện tại và chạy lại bằng lệnh: "npx expo start --clear" để cập nhật cấu hình mới.'
+      };
+    }
+
     // Phân biệt lỗi cấu hình và lỗi mạng/API
     if (error.message && error.message.includes('GEMINI_API_KEY')) {
       return { success: false, error: error.message };

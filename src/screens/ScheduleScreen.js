@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, Platform } from 'react-native';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
+import { getPlantsByUser, updatePlant } from '../services/plantService';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,14 +17,15 @@ const ScheduleScreen = ({ navigation }) => {
     if (!user) return;
     setLoading(true);
     try {
-      const q = query(collection(db, 'plants'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
+      const result = await getPlantsByUser(user.uid);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       const now = new Date();
       let taskList = [];
 
-      querySnapshot.forEach((document) => {
-        const plant = { id: document.id, ...document.data() };
-        const waterIntervalDays = plant.waterIntervalDays || plant.waterInterval || 2;
+      result.data.forEach((plant) => {
+        const waterIntervalDays = plant.waterIntervalDays || 2;
         let lastWatered = plant.lastWatered ? new Date(plant.lastWatered) : new Date(0);
         let nextWatering = new Date(lastWatered);
         nextWatering.setDate(nextWatering.getDate() + waterIntervalDays);
@@ -58,9 +58,13 @@ const ScheduleScreen = ({ navigation }) => {
 
   const handleMarkAsDone = async (id, actionName) => {
     try {
-      await updateDoc(doc(db, 'plants', id), { lastWatered: new Date().toISOString() });
-      Alert.alert('✅ Hoàn thành!', `Đã ghi nhận ${actionName.toLowerCase()} thành công!`);
-      fetchSchedules();
+      const result = await updatePlant(id, { lastWatered: new Date().toISOString() });
+      if (result.success) {
+        Alert.alert('✅ Hoàn thành!', `Đã ghi nhận ${actionName.toLowerCase()} thành công!`);
+        fetchSchedules();
+      } else {
+        Alert.alert('Lỗi', result.error || 'Không thể cập nhật trạng thái.');
+      }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể cập nhật trạng thái.');
     }
